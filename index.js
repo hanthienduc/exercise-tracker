@@ -31,22 +31,29 @@ mongoose
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 
-const Users = mongoose.model("Users", {
-  username: { type: String },
+const userSchema = new mongoose.Schema({
+  username: { type: String, required: true },
+  log: [
+    {
+      description: { type: String, required: true },
+      duration: { type: Number, required: true },
+      date: { type: Date, required: true },
+    },
+  ],
 });
 
-const Exercises = mongoose.model("Exercises", {
-  username: String,
-  description: String,
-  duration: Number,
-  date: Date,
-  userId: String,
-});
+const Users = mongoose.model("Users", userSchema);
 
 app.get("/api/users", function (req, res, next) {
-  Users.find(function (err, result) {
+  Users.find({}, function (err, users) {
     if (err) res.json(err);
-    res.json(result);
+    const returnData = users.map((user) => {
+      return {
+        _id: user._id,
+        username: user.username,
+      };
+    });
+    res.json(returnData);
   });
 });
 
@@ -55,7 +62,11 @@ app.post("/api/users", function (req, res, next) {
   const user = new Users({ username: username });
   user.save(function (err, result) {
     if (err) res.json({ error: err });
-    res.json(result);
+    const returnObj = {
+      _id: result._id,
+      username: result.username,
+    };
+    res.json(returnObj);
   });
 });
 
@@ -67,81 +78,74 @@ app.post("/api/users/:_id/exercises", function (req, res, next) {
   if (!date) {
     date = new Date();
   }
-  Users.findById({ _id: userId }, function (err, result) {
-    if (err) res.json({ error: "couldn't find user to add exercise data" });
-    if (!result)
-      return res.json({ error: "couldn't find user to add exercise data" });
-    const exercise = new Exercises({
-      username: result.username,
-      description: description,
-      duration: duration,
-      date: new Date(date),
-      userId: result._id,
-    });
-    exercise.save(function (err, data) {
-      if (err) res.json({ error: err });
-      res.json({
-        username: data.username,
-        description: data.description,
-        duration: data.duration,
-        date: data.date.toDateString(),
-        _id: data.userId,
+  date = new Date(date);
+
+  const exerciseData = {
+    description: description,
+    duration: duration,
+    date: date,
+  };
+
+  Users.findByIdAndUpdate(
+    { _id: userId },
+    { new: true },
+    function (err, userFound) {
+      if (err) res.json({ error: "couldn't find user to add exercise data" });
+      if (!userFound)
+        return res.json({ error: "couldn't find user to add exercise data" });
+
+      userFound.log.push(exerciseData);
+      userFound.save(function (err, result) {
+        if (err) res.json({ error: err });
+        const returnExerciseObj = {
+          _id: result._id,
+          username: result.username,
+          date: exerciseData.date.toDateString(),
+          duration: parseInt(exerciseData.duration),
+          description: exerciseData.description,
+        };
+        res.json(returnExerciseObj);
       });
-    });
-  });
+    }
+  );
 });
 
 app.get("/api/users/:_id/logs?", function (req, res) {
   const userId = req.params._id;
+  const reqQuery = req.query;
+  const fromDate = reqQuery.from;
+  const toDate = reqQuery.to;
+  const limit = parseInt(reqQuery.limit);
 
-  Users.findOne({ _id: userId }, function (err, result) {
-    if (err) res.json({ error: err });
-    if (!result) res.json({ error: "user not found" });
+  const queryData = {
+    _id: userId,
+  };
 
-    const reqQuery = req.query;
-    const fromDate = new Date(reqQuery.from);
-    const toDate = new Date(reqQuery.to);
-    const limit = parseInt(reqQuery.limit);
-    if (!reqQuery || !fromDate || !toDate) {
-      res.json({
-        _id: result._id,
-        username: result.username,
-        count: 0,
-        log: [],
-      });
+  if (fromDate && toDate) {
+    queryData.date = {
+      $gte: startOfDay(new Date(fromDate)),
+      $lte: endOfDay(new Date(toDate)),
+    };
+  }
+
+  Users.findById(queryData).exec(function (err, userLog) {
+    if (err) return res.json(err);
+    const response = {
+      _id: userLog._id,
+      username: userLog.username,
+    };
+    if (fromDate) {
+      response.from = new Date(fromDate).toDateString();
     }
-    Exercises.find({
-      userId: result._id,
-      date: {
-        $gte: startOfDay(fromDate),
-        $lte: endOfDay(toDate),
-      },
-    })
-      .limit(limit)
-      .exec(function (err, data) {
-        if (!result || err) {
-          res.json({
-            _id: result._id,
-            username: result.username,
-            count: 0,
-            log: [],
-          });
-        }
-        res.json({
-          _id: result._id,
-          username: result.username,
-          from: new Date(fromDate).toDateString(),
-          to: new Date(toDate).toDateString(),
-          count: data.length,
-          log: data.map((item) => {
-            return {
-              description: item.description,
-              duration: item.duration,
-              date: item.date.toDateString(),
-            };
-          }),
-        });
-      });
+    if (toDate) {
+      response.to = new Date(toDate).toDateString();
+    }
+    response.count = userLog.log.length;
+    const filteredItem = userLog.log.filter(
+      (item, index) => index < limit
+    );
+    response.log = filteredItem;
+    res.json(response);
   });
 });
 

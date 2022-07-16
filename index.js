@@ -148,7 +148,7 @@ app.get("/api/users/:_id/logs?", function (req, res) {
       };
     });
     if (limit >= 0) {
-      filterLog = filterLog.filter((item, index) => index <= limit);
+      filterLog = filterLog.filter((item, index) => index < limit);
     }
     response.count = filterLog.length;
     response.log = filterLog;

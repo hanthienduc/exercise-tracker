@@ -109,9 +109,11 @@ app.get("/api/users/:_id/logs?", function (req, res) {
         if (err) return res.json({ error: "couldn't find any data" });
         if (!result) return res.json({ error: "couldn't find any data" });
         res.json({
-          username: result.username,
-          count: data.length,
           _id: result._id,
+          username: result.username,
+          from: new Date(fromDate).toDateString(),
+          to: new Date(toDate).toDateString(),
+          count: data.length,
           log: data.map((item) => {
             return {
               description: item.description,

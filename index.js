@@ -102,7 +102,14 @@ app.get("/api/users/:_id/logs?", function (req, res) {
     const fromDate = new Date(reqQuery.from);
     const toDate = new Date(reqQuery.to);
     const limit = parseInt(reqQuery.limit);
-
+    if (!reqQuery || !fromDate || !toDate) {
+      res.json({
+        _id: result._id,
+        username: result.username,
+        count: 0,
+        log: [],
+      });
+    }
     Exercises.find({
       userId: result._id,
       date: {

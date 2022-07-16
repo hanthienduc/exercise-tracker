@@ -140,11 +140,18 @@ app.get("/api/users/:_id/logs?", function (req, res) {
     if (toDate) {
       response.to = new Date(toDate).toDateString();
     }
-    response.count = userLog.log.length;
-    const filteredItem = userLog.log.filter(
-      (item, index) => limit ? index < limit : index > 0
-    );
-    response.log = filteredItem;
+    let filterLog = userLog.log.map((item) => {
+      return {
+        description: item.description,
+        duration: item.duration,
+        date: item.date.toDateString(),
+      };
+    });
+    if (limit >= 0) {
+      filterLog = filterLog.filter((item, index) => index <= limit);
+    }
+    response.count = filterLog.length;
+    response.log = filterLog;
     res.json(response);
   });
 });

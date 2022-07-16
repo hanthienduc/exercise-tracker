@@ -29,7 +29,7 @@ mongoose
   });
 
 app.use(bodyParser.urlencoded({ extended: false }));
-// app.use(bodyParser.json())
+app.use(bodyParser.json());
 
 const Users = mongoose.model("Users", {
   username: { type: String },
@@ -67,7 +67,7 @@ app.post("/api/users/:_id/exercises", function (req, res, next) {
   if (!date) {
     date = new Date();
   }
-  Users.findOne({ _id: userId }, function (err, result) {
+  Users.findById({ _id: userId }, function (err, result) {
     if (err) res.json({ error: "couldn't find user to add exercise data" });
     if (!result)
       return res.json({ error: "couldn't find user to add exercise data" });
@@ -95,8 +95,8 @@ app.get("/api/users/:_id/logs?", function (req, res) {
   const userId = req.params._id;
 
   Users.findOne({ _id: userId }, function (err, result) {
-    if (err) return res.json({ error: err });
-    if (!result) return res.json({ error: "user not found" });
+    if (err) res.json({ error: err });
+    if (!result) res.json({ error: "user not found" });
 
     const reqQuery = req.query;
     const fromDate = new Date(reqQuery.from);

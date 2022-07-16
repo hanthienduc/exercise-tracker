@@ -6,6 +6,8 @@ const cors = require("cors");
 require("dotenv").config();
 const mongoose = require("mongoose");
 const bodyParser = require("body-parser");
+const endOfDay = require("date-fns/endOfDay");
+const startOfDay = require("date-fns/startOfDay");
 
 app.use(cors());
 app.use(express.static("public"));
@@ -37,7 +39,7 @@ const Exercises = mongoose.model("Exercises", {
   username: String,
   description: String,
   duration: Number,
-  date: String,
+  date: Date,
   userId: String,
 });
 
@@ -61,8 +63,10 @@ app.post("/api/users/:_id/exercises", function (req, res, next) {
   const userId = req.params._id;
   const description = req.body.description;
   const duration = req.body.duration;
-  const date = req.body.date;
-
+  let date = req.body.date;
+  if(!date){
+    date = new Date()
+  }
   Users.findOne({ _id: userId }, function (err, result) {
     if (err) res.json({ error: "couldn't find user to add exercise data" });
     if (!result)
@@ -71,7 +75,7 @@ app.post("/api/users/:_id/exercises", function (req, res, next) {
       username: result.username,
       description: description,
       duration: duration,
-      date: new Date(date).toDateString(),
+      date: new Date(date),
       userId: result._id,
     });
     exercise.save(function (err, data) {
@@ -80,7 +84,7 @@ app.post("/api/users/:_id/exercises", function (req, res, next) {
         username: data.username,
         description: data.description,
         duration: data.duration,
-        date: data.date,
+        date: data.date.toDateString(),
         _id: data.userId,
       });
     });
@@ -90,8 +94,8 @@ app.post("/api/users/:_id/exercises", function (req, res, next) {
 app.get("/api/users/:_id/logs?", function (req, res) {
   const userId = req.params._id;
   const reqQuery = req.query;
-  const fromDate = reqQuery.from;
-  const toDate = reqQuery.to;
+  const fromDate = new Date(reqQuery.from);
+  const toDate = new Date(reqQuery.to);
   const limit = parseInt(reqQuery.limit);
 
   Users.findOne({ _id: userId }, function (err, result) {
@@ -100,8 +104,8 @@ app.get("/api/users/:_id/logs?", function (req, res) {
     Exercises.find({
       userId: result._id,
       date: {
-        $gte: new Date(fromDate).toDateString(),
-        $lte: new Date(toDate).toDateString(),
+        $gte: startOfDay(fromDate),
+        $lte: endOfDay(toDate),
       },
     })
       .limit(limit)
@@ -118,7 +122,7 @@ app.get("/api/users/:_id/logs?", function (req, res) {
             return {
               description: item.description,
               duration: item.duration,
-              date: item.date,
+              date: item.date.toDateString(),
             };
           }),
         });

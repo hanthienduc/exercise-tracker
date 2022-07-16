@@ -64,8 +64,8 @@ app.post("/api/users/:_id/exercises", function (req, res, next) {
   const description = req.body.description;
   const duration = req.body.duration;
   let date = req.body.date;
-  if(!date){
-    date = new Date()
+  if (!date) {
+    date = new Date();
   }
   Users.findOne({ _id: userId }, function (err, result) {
     if (err) res.json({ error: "couldn't find user to add exercise data" });
@@ -93,14 +93,16 @@ app.post("/api/users/:_id/exercises", function (req, res, next) {
 
 app.get("/api/users/:_id/logs?", function (req, res) {
   const userId = req.params._id;
-  const reqQuery = req.query;
-  const fromDate = new Date(reqQuery.from);
-  const toDate = new Date(reqQuery.to);
-  const limit = parseInt(reqQuery.limit);
 
   Users.findOne({ _id: userId }, function (err, result) {
     if (err) return res.json({ error: err });
     if (!result) return res.json({ error: "user not found" });
+
+    const reqQuery = req.query;
+    const fromDate = new Date(reqQuery.from);
+    const toDate = new Date(reqQuery.to);
+    const limit = parseInt(reqQuery.limit);
+
     Exercises.find({
       userId: result._id,
       date: {
@@ -110,8 +112,14 @@ app.get("/api/users/:_id/logs?", function (req, res) {
     })
       .limit(limit)
       .exec(function (err, data) {
-        if (err) return res.json({ error: "couldn't find any data" });
-        if (!result) return res.json({ error: "couldn't find any data" });
+        if (!result || err) {
+          res.json({
+            _id: result._id,
+            username: result.username,
+            count: 0,
+            log: [],
+          });
+        }
         res.json({
           _id: result._id,
           username: result.username,

@@ -142,7 +142,7 @@ app.get("/api/users/:_id/logs?", function (req, res) {
     }
     response.count = userLog.log.length;
     const filteredItem = userLog.log.filter(
-      (item, index) => index < limit
+      (item, index) => limit ? index < limit : index > 0
     );
     response.log = filteredItem;
     res.json(response);
